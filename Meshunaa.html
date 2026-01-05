@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Meshunaa</title>
+    <style>
+        /* CSS STYLES */
+        :root {
+            --primary-color: #0f0;
+            --bg-color: #0d1117;
+            --panel-bg: rgba(22, 27, 34, 0.98);
+            --gold-color: #ffd700;
+            --boss-color: #9b59b6;
+            --freeze-color: #00d2ff;
+        }
+
+        body {
+            margin: 0; overflow: hidden; background-color: var(--bg-color);
+            color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none; touch-action: none;
+        }
+
+        canvas { display: block; }
+
+        /* DEBUG CONSOLE */
+        #error-console {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); color: #ff4444; padding: 20px;
+            font-family: monospace; font-size: 14px; display: none; z-index: 9999;
+            white-space: pre-wrap; overflow: scroll;
+        }
+
+        /* UI LAYOUT */
+        #game-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 10px; box-sizing: border-box;
+        }
+
+        /* TOP BAR */
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            pointer-events: auto; width: 100%;
+        }
+
+        .hud-stats { display: flex; flex-direction: column; gap: 5px; }
+
+        .hud-panel {
+            display: flex; gap: 15px; font-size: 14px; font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px;
+            width: fit-content;
+        }
+
+        .controls-panel { display: flex; gap: 10px; }
+
+        .icon-btn {
+            background: rgba(0,0,0,0.6); border: 1px solid #30363d;
+            color: white; padding: 8px; border-radius: 8px; cursor: pointer;
+            font-size: 18px; width: 40px; text-align: center;
+        }
+        .icon-btn:hover { background: #30363d; }
+
+        #input-container {
+            pointer-events: auto; align-self: center; margin-bottom: 20px;
+            text-align: center; width: 100%;
+        }
+
+        #player-input {
+            background: rgba(0,0,0,0.6); border: 2px solid var(--primary-color);
+            color: var(--primary-color); font-size: 32px; padding: 10px;
+            border-radius: 12px; width: 180px; text-align: center;
+            outline: none; font-weight: bold;
+        }
+        ::placeholder { color: rgba(0, 255, 0, 0.3); }
+
+        /* MODALS */
+        .modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10; pointer-events: auto;
+        }
+
+        .modal-content {
+            background: var(--panel-bg); padding: 25px; border-radius: 16px;
+            border: 1px solid #30363d; text-align: center;
+            max-width: 500px; width: 85%; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+        }
+
+        h1 { margin: 0 0 10px 0; color: var(--primary-color); font-size: 2em; letter-spacing: 1px; }
+
+        /* SETTINGS BOX */
+        .settings-box {
+            background: rgba(255, 255, 255, 0.05); border-radius: 8px;
+            padding: 20px; margin: 15px 0; text-align: center;
+            border: 1px solid #30363d; width: 100%; box-sizing: border-box;
+        }
+        .settings-box h3 { margin: 0 0 15px 0; color: #58a6ff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .checkbox-group { display: flex; justify-content: center; gap: 20px; margin-bottom: 5px; }
+        
+        /* COOL BUTTONS */
+        .op-btn { position: relative; cursor: pointer; }
+        .op-btn input { display: none; }
+        .op-btn span {
+            display: flex; align-items: center; justify-content: center;
+            width: 60px; height: 60px; background: #161b22;
+            border: 2px solid #30363d; border-radius: 12px;
+            color: #484f58; font-size: 32px; font-weight: bold;
+            transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .op-btn input:checked + span {
+            border-color: var(--primary-color); color: var(--primary-color);
+            background: rgba(0, 255, 0, 0.1); box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+            transform: scale(1.1);
+        }
+
+        .btn {
+            background-color: #238636; color: white; border: none;
+            padding: 12px 30px; font-size: 18px; border-radius: 6px;
+            cursor: pointer; margin-top: 15px; width: 100%;
+        }
+        .btn:hover { background-color: #2ea043; }
+        .btn-secondary { background-color: #1f6feb; margin-top: 10px; }
+
+        /* MISTAKES LIST */
+        #mistakes-list {
+            text-align: left; margin-top: 15px; display: none;
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;
+            max-height: 150px; overflow-y: scroll;
+        }
+        .mistake-item {
+            border-bottom: 1px solid #444; padding: 8px 0; font-size: 14px;
+            display: flex; justify-content: space-between;
+        }
+        .correct-ans { color: #2ea043; font-weight: bold; }
+        .missed-q { color: #ff7b72; }
+
+        .hidden { display: none !important; }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        #freeze-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0, 210, 255, 0.15); border: 5px solid var(--freeze-color);
+            box-sizing: border-box; pointer-events: none; z-index: 5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px; font-weight: bold; color: var(--freeze-color);
+            text-shadow: 0 0 20px white; opacity: 0; transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="error-console"></div>
+    <div id="freeze-overlay">TIME FROZEN</div>
+
+    <div id="game-ui">
+        <div class="top-bar">
+            <div class="hud-stats">
+                <div class="hud-panel">
+                    <span style="color:var(--gold-color)">HI: <span id="highscore-txt">0</span></span>
+                </div>
+                <div class="hud-panel">
+                    <span style="color:#58a6ff">LVL: <span id="level-txt">1</span></span>
+                    <span style="color:#e74c3c">HP: <span id="health-txt">100%</span></span>
+                    <span style="color:#f1c40f">PTS: <span id="score-txt">0</span></span>
+                </div>
+            </div>
+            
+            <div class="controls-panel">
+                <button class="icon-btn" onclick="toggleMute()" id="mute-btn">🔊</button>
+                <button class="icon-btn" onclick="togglePause()" id="pause-btn">II</button>
+            </div>
+        </div>
+        
+        <div id="input-container">
+            <input type="tel" id="player-input" autocomplete="off" placeholder="?">
+            <div style="color: #8b949e; margin-top:10px; font-size: 12px;">TYPE & ENTER</div>
+        </div>
+    </div>
+
+    <div id="start-modal" class="modal">
+        <div class="modal-content">
+            <h1>MATH DEFENDER</h1>
+            <p style="color: #d0d7de; font-style: italic; font-size: 16px; margin-bottom: 25px;">
+                "Defend the city using the ultimate weapon:<br><b>Your Brain!</b>"
+            </p>
+
+            <div class="settings-box">
+                <h3>SELECT OPERATIONS</h3>
+                <div class="checkbox-group">
+                    <label class="op-btn"><input type="checkbox" id="opt-add" checked><span>+</span></label>
+                    <label class="op-btn"><input type="checkbox" id="opt-sub" checked><span>-</span></label>
+                    <label class="op-btn"><input type="checkbox" id="opt-mul"><span>x</span></label>
+                </div>
+            </div>
+
+            <p style="color: var(--gold-color); margin-top: 10px;">HIGH SCORE: <span id="start-highscore">0</span></p>
+            <button class="btn" onclick="window.startGame()">START MISSION</button>
+        </div>
+    </div>
+
+    <div id="pause-modal" class="modal hidden">
+        <div class="modal-content">
+            <h1>PAUSED</h1>
+            <button class="btn" onclick="togglePause()">RESUME</button>
+            <button class="btn btn-secondary" onclick="goHome()">HOME</button>
+        </div>
+    </div>
+
+    <div id="report-modal" class="modal hidden">
+        <div class="modal-content">
+            <h1 style="color: #e74c3c">CITY DESTROYED</h1>
+            <h2 id="record-msg" style="color: #58a6ff; font-size: 18px;">Mission Report</h2>
+            
+            <div style="margin: 15px 0; font-size: 16px; color: #ccc; text-align: left;">
+                <p>Score: <span id="rep-score" style="float:right; color:white; font-weight:bold">0</span></p>
+                <p>Destroyed: <span id="rep-solved" style="float:right; color:white; font-weight:bold">0</span></p>
+                <p>Mistakes: <span id="rep-mistakes" style="float:right; color:#ff7b72; font-weight:bold">0</span></p>
+            </div>
+
+            <button id="view-mistakes-btn" class="btn btn-secondary hidden" onclick="toggleMistakes()">VIEW MISTAKES</button>
+            <div id="mistakes-list"></div>
+
+            <button class="btn" onclick="window.startGame()">RETRY</button>
+            <button class="btn btn-secondary" onclick="goHome()">HOME</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // --- SOUND SYSTEM ---
+        const Sound = {
+            ctx: null, isMuted: false,
+            init: function() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            toggle: function() { this.isMuted = !this.isMuted; return this.isMuted; },
+            playTone: function(freq, type, duration, vol) {
+                if(!this.ctx || this.isMuted) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            },
+            playLaser: function() {
+                if(!this.ctx || this.isMuted) return;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime+0.15);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime+0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+            },
+            playFreeze: function() { this.playTone(600, 'sine', 1.0, 0.2); },
+            playError: function() { this.playTone(150, 'sawtooth', 0.2, 0.1); },
+            playExplosion: function() { this.playTone(100, 'square', 0.3, 0.1); },
+            playBossHit: function() { this.playTone(60, 'square', 0.5, 0.2); }
+        };
+
+        window.onerror = function(msg, src, line) {
+            document.getElementById('error-console').style.display = 'block';
+            document.getElementById('error-console').innerHTML += `ERR: ${msg} (L:${line})\n`;
+        };
+
+        window.onload = function() {
+            try {
+                const canvas = document.getElementById("gameCanvas");
+                const ctx = canvas.getContext("2d");
+                
+                let highScore = localStorage.getItem('mathDefenderHighScore') || 0;
+                document.getElementById("highscore-txt").innerText = highScore;
+                document.getElementById("start-highscore").innerText = highScore;
+
+                let state = {
+                    isPlaying: false, isPaused: false, score: 0, level: 1, health: 100,
+                    meteors: [], particles: [], lasers: [], stars: [], buildings: [],
+                    mistakesLog: [], lastTime: 0, spawnTimer: 0, spawnRate: 2000,
+                    stats: { totalSolved: 0, shotsFired: 0 },
+                    cityColor: "#2c3e50",
+                    ops: ['+'],
+                    freezeTimer: 0
+                };
+
+                const inputField = document.getElementById("player-input");
+                
+                window.addEventListener('click', (e) => {
+                    Sound.init();
+                    if(state.isPlaying && !state.isPaused && 
+                       e.target.tagName !== "BUTTON" && e.target.tagName !== "LABEL" && e.target.tagName !== "INPUT" &&
+                       e.target.id !== "pause-btn" && e.target.id !== "mute-btn") {
+                        inputField.focus();
+                    }
+                });
+
+                inputField.addEventListener('keydown', (e) => {
+                    if (!state.isPlaying || state.isPaused) return;
+                    if (e.key === 'Enter') {
+                        fireLaser(inputField.value);
+                        inputField.value = "";
+                    }
+                });
+
+                window.toggleMute = function() {
+                    let muted = Sound.toggle();
+                    document.getElementById("mute-btn").innerText = muted ? "🔇" : "🔊";
+                };
+
+                window.togglePause = function() {
+                    if(!state.isPlaying) return;
+                    state.isPaused = !state.isPaused;
+                    if(state.isPaused) {
+                        document.getElementById("pause-modal").classList.remove("hidden");
+                        inputField.blur();
+                    } else {
+                        document.getElementById("pause-modal").classList.add("hidden");
+                        inputField.focus();
+                        state.lastTime = performance.now();
+                        requestAnimationFrame(gameLoop);
+                    }
+                };
+
+                // --- NEW HOME FUNCTION ---
+                window.goHome = function() {
+                    state.isPlaying = false;
+                    state.isPaused = false;
+                    
+                    // Hide other screens
+                    document.getElementById("pause-modal").classList.add("hidden");
+                    document.getElementById("report-modal").classList.add("hidden");
+                    
+                    // Show Start Screen
+                    document.getElementById("start-modal").classList.remove("hidden");
+                    
+                    // Reset Freeze Overlay
+                    document.getElementById("freeze-overlay").style.opacity = 0;
+                    
+                    inputField.blur(); // Hide keyboard
+                };
+
+                function generateCity() {
+                    state.buildings = [];
+                    let x = 0;
+                    while(x < canvas.width) {
+                        let w = Math.random() * 40 + 30;
+                        let h = Math.random() * 100 + 50;
+                        let windows = [];
+                        for(let wx=5; wx<w-5; wx+=10) {
+                            for(let wy=5; wy<h-5; wy+=15) {
+                                if(Math.random() > 0.3) windows.push({rx: wx, ry: wy});
+                            }
+                        }
+                        state.buildings.push({x: x, w: w, h: h, wins: windows});
+                        x += w;
+                    }
+                }
+
+                function drawCity() {
+                    ctx.fillStyle = state.cityColor;
+                    state.buildings.forEach(b => {
+                        let by = canvas.height - b.h;
+                        ctx.fillRect(b.x, by, b.w, b.h);
+                        ctx.fillStyle = state.cityColor === "#2c3e50" ? "#f1c40f" : "#500";
+                        b.wins.forEach(win => ctx.fillRect(b.x + win.rx, by + win.ry, 4, 8));
+                        ctx.fillStyle = state.cityColor;
+                    });
+                }
+
+                window.startGame = function() {
+                    let ops = [];
+                    if(document.getElementById('opt-add').checked) ops.push('+');
+                    if(document.getElementById('opt-sub').checked) ops.push('-');
+                    if(document.getElementById('opt-mul').checked) ops.push('x');
+                    
+                    if(ops.length === 0) {
+                        alert("Select at least one operator!");
+                        return;
+                    }
+                    state.ops = ops;
+
+                    Sound.init();
+                    state.isPlaying = true; state.isPaused = false;
+                    state.score = 0; state.level = 1; state.health = 100;
+                    state.meteors = []; state.particles = []; state.lasers = [];
+                    state.mistakesLog = []; state.freezeTimer = 0;
+                    state.stats = { totalSolved: 0, shotsFired: 0 };
+                    state.spawnRate = 2000; state.cityColor = "#2c3e50";
+
+                    generateCity();
+
+                    document.getElementById("start-modal").classList.add("hidden");
+                    document.getElementById("report-modal").classList.add("hidden");
+                    document.getElementById("mistakes-list").style.display = 'none';
+                    
+                    inputField.value = ""; inputField.focus();
+                    document.getElementById("game-ui").classList.remove("shake");
+                    updateHUD(); resize(); requestAnimationFrame(gameLoop);
+                };
+
+                window.toggleMistakes = function() {
+                    const list = document.getElementById("mistakes-list");
+                    list.style.display = (list.style.display === "none") ? "block" : "none";
+                };
+
+                function gameOver() {
+                    state.isPlaying = false;
+                    inputField.blur();
+                    Sound.playBossHit();
+
+                    if (state.score > highScore) {
+                        highScore = state.score;
+                        localStorage.setItem('mathDefenderHighScore', highScore);
+                        document.getElementById("record-msg").innerText = "NEW HIGH SCORE!";
+                        document.getElementById("record-msg").style.color = "gold";
+                    } else {
+                        document.getElementById("record-msg").innerText = "Mission Report";
+                        document.getElementById("record-msg").style.color = "#58a6ff";
+                    }
+
+                    document.getElementById("rep-score").innerText = state.score;
+                    document.getElementById("rep-solved").innerText = state.stats.totalSolved;
+                    document.getElementById("rep-mistakes").innerText = state.mistakesLog.length;
+
+                    const listBtn = document.getElementById("view-mistakes-btn");
+                    const listDiv = document.getElementById("mistakes-list");
+                    
+                    if (state.mistakesLog.length > 0) {
+                        listBtn.classList.remove("hidden");
+                        let html = "";
+                        state.mistakesLog.forEach(m => {
+                            html += `<div class="mistake-item"><span class="missed-q">Q: <b>${m.q}</b></span><span class="correct-ans">Ans: ${m.ans}</span></div>`;
+                        });
+                        listDiv.innerHTML = html;
+                    } else {
+                        listBtn.classList.add("hidden");
+                    }
+
+                    document.getElementById("report-modal").classList.remove("hidden");
+                }
+
+                function generateMath(isBoss) {
+                    let type = state.ops[Math.floor(Math.random() * state.ops.length)];
+                    let range = 10 + (state.level * 2);
+                    if (isBoss) range += 5;
+
+                    let n1 = Math.floor(Math.random() * range) + 2;
+                    let n2 = Math.floor(Math.random() * range) + 2;
+                    if (type === 'x') { n1=Math.floor(Math.random()*10)+2; n2=Math.floor(Math.random()*10)+2; }
+                    if (type === '-' && n1 < n2) [n1, n2] = [n2, n1];
+
+                    let q = `${n1} ${type} ${n2}`;
+                    let a = (type === '+') ? n1+n2 : (type === '-') ? n1-n2 : n1*n2;
+                    return { q, a };
+                }
+
+                function spawnMeteor() {
+                    const isBossLevel = (state.level % 5 === 0);
+                    const hasBoss = state.meteors.some(m => m.isBoss);
+                    if (isBossLevel && !hasBoss) { spawnBoss(); return; }
+
+                    let math = generateMath(false);
+                    let isFreeze = Math.random() < 0.05;
+
+                    state.meteors.push({
+                        x: Math.random() * (canvas.width - 60) + 30,
+                        y: -60,
+                        question: math.q, answer: math.a,
+                        speed: 1 + (state.level * 0.15),
+                        radius: 35,
+                        rotation: Math.random(), rotSpeed: 0.02,
+                        isBoss: false, hp: 1, isFreeze: isFreeze
+                    });
+                }
+
+                function spawnBoss() {
+                    let math = generateMath(true);
+                    state.meteors.push({
+                        x: canvas.width / 2, y: -100,
+                        question: math.q, answer: math.a,
+                        speed: 0.3, radius: 80,
+                        rotation: 0, rotSpeed: 0.01,
+                        isBoss: true, hp: 3, maxHp: 3, isFreeze: false
+                    });
+                }
+
+                function fireLaser(val) {
+                    if (val === "") return;
+                    let ans = parseInt(val);
+                    state.stats.shotsFired++;
+
+                    let hitIndex = state.meteors.findIndex(m => m.answer === ans);
+
+                    if (hitIndex !== -1) {
+                        let m = state.meteors[hitIndex];
+                        state.lasers.push({ x1: canvas.width/2, y1: canvas.height-50, x2: m.x, y2: m.y, life: 1.0 });
+                        state.health = Math.min(100, state.health + 2);
+
+                        m.hp--;
+                        if (m.hp <= 0) {
+                            if (m.isFreeze) {
+                                state.freezeTimer = 5000;
+                                Sound.playFreeze();
+                                createExplosion(m.x, m.y, "#00d2ff", 30);
+                            } else {
+                                Sound.playExplosion();
+                                createExplosion(m.x, m.y, m.isBoss ? "#9b59b6" : "#f1c40f", m.isBoss ? 50 : 15);
+                            }
+                            state.meteors.splice(hitIndex, 1);
+                            state.score += m.isBoss ? 50 : 10; 
+                            state.stats.totalSolved++;
+                            if (state.stats.totalSolved % 5 === 0) {
+                                state.level++;
+                                state.spawnRate = Math.max(600, 2000 - (state.level * 100));
+                            }
+                        } else {
+                            Sound.playBossHit();
+                            createExplosion(m.x, m.y, "#ffffff", 10);
+                            let newMath = generateMath(true);
+                            m.question = newMath.q; m.answer = newMath.a; m.y -= 30;
+                        }
+                        Sound.playLaser();
+                    } else {
+                        Sound.playError();
+                        state.health -= 10;
+                        inputField.style.borderColor = "red";
+                        setTimeout(() => inputField.style.borderColor = "#0f0", 200);
+                        state.cityColor = "#c0392b";
+                        setTimeout(() => state.cityColor = "#2c3e50", 150);
+                        if (state.health <= 0) gameOver();
+                    }
+                    updateHUD();
+                }
+
+                function logMissedMeteor(m) {
+                    state.mistakesLog.push({ q: m.question, yours: "Missed", ans: m.answer });
+                }
+
+                function createExplosion(x, y, color, count) {
+                    for(let i=0; i<count; i++) {
+                        state.particles.push({
+                            x: x, y: y,
+                            vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
+                            life: 1.0, color: color, size: Math.random()*5+2
+                        });
+                    }
+                }
+
+                function updateHUD() {
+                    document.getElementById("score-txt").innerText = state.score;
+                    document.getElementById("level-txt").innerText = state.level;
+                    document.getElementById("health-txt").innerText = state.health + "%";
+                    if(state.health < 30) document.getElementById("health-txt").style.color = "red";
+                }
+
+                function resize() {
+                    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+                    if(state.isPlaying) generateCity();
+                    initStars();
+                }
+                window.addEventListener('resize', resize);
+                function initStars() {
+                    state.stars = [];
+                    for(let i=0; i<100; i++) state.stars.push({
+                        x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+                        size: Math.random()*2, speed: Math.random()*0.8
+                    });
+                }
+
+                function gameLoop(time) {
+                    if (!state.isPlaying || state.isPaused) return;
+                    let deltaTime = time - state.lastTime;
+                    state.lastTime = time;
+
+                    let frozen = false;
+                    if (state.freezeTimer > 0) {
+                        state.freezeTimer -= deltaTime;
+                        frozen = true;
+                        document.getElementById("freeze-overlay").style.opacity = 0.8;
+                    } else {
+                        document.getElementById("freeze-overlay").style.opacity = 0;
+                    }
+
+                    ctx.fillStyle = "#0d1117"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                    
+                    ctx.fillStyle = "white";
+                    state.stars.forEach(s => {
+                        ctx.globalAlpha = Math.random()*0.5+0.2;
+                        ctx.fillRect(s.x, s.y, s.size, s.size);
+                        s.y += s.speed; if(s.y>canvas.height) s.y=0;
+                    });
+                    ctx.globalAlpha = 1.0;
+
+                    drawCity();
+
+                    if (!frozen && time - state.spawnTimer > state.spawnRate) {
+                        spawnMeteor(); state.spawnTimer = time;
+                    }
+
+                    ctx.fillStyle = "#34495e";
+                    ctx.fillRect(canvas.width/2-40, canvas.height-40, 80, 40);
+                    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height-40, 35, Math.PI, 0);
+                    ctx.fillStyle = "#3498db"; ctx.fill();
+
+                    for (let i = state.meteors.length - 1; i >= 0; i--) {
+                        let m = state.meteors[i];
+                        
+                        if(!frozen) { m.y += m.speed; m.rotation += m.rotSpeed; }
+
+                        ctx.save();
+                        ctx.translate(m.x, m.y); ctx.rotate(m.rotation);
+                        
+                        ctx.beginPath();
+                        if (m.isBoss) {
+                            ctx.fillStyle = "#8e44ad";
+                            let spikes=12; let o=m.radius; let inR=m.radius/2;
+                            for(let j=0;j<spikes*2;j++){let r=(j%2===0)?o:inR;let a=(Math.PI/spikes)*j;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+                            ctx.fill();
+                            ctx.strokeStyle="white"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,m.radius+10,0,Math.PI*2); ctx.stroke();
+                        } else if (m.isFreeze) {
+                            ctx.fillStyle = "#00d2ff";
+                            ctx.arc(0,0,m.radius,0,Math.PI*2); ctx.fill();
+                            ctx.strokeStyle="white"; ctx.lineWidth=2; ctx.stroke();
+                        } else {
+                            let grad = ctx.createRadialGradient(0,0,m.radius*0.2,0,0,m.radius);
+                            grad.addColorStop(0,"#f1c40f"); grad.addColorStop(1,"#641e16");
+                            ctx.fillStyle = grad;
+                            ctx.arc(0,0,m.radius,0,Math.PI*2); ctx.fill();
+                        }
+                        ctx.restore();
+
+                        ctx.shadowColor="black"; ctx.shadowBlur=10;
+                        ctx.fillStyle="white"; ctx.font = m.isBoss ? "bold 40px Arial" : "bold 24px Arial";
+                        ctx.textAlign="center"; ctx.textBaseline="middle";
+                        ctx.fillText(m.question, m.x, m.y);
+                        
+                        if(m.isBoss) {
+                            ctx.font = "bold 20px Arial"; ctx.fillStyle = "#f1c40f";
+                            ctx.fillText(`HP: ${m.hp}/${m.maxHp}`, m.x, m.y + 50);
+                        }
+                        ctx.shadowBlur=0;
+
+                        if (m.y > canvas.height) {
+                            state.health -= m.isBoss ? 50 : 20;
+                            logMissedMeteor(m);
+                            Sound.playExplosion();
+                            createExplosion(m.x, canvas.height, "red", 20);
+                            state.meteors.splice(i, 1);
+                            updateHUD();
+                            state.cityColor = "#c0392b"; setTimeout(() => state.cityColor = "#2c3e50", 150);
+                            let ui = document.getElementById("game-ui");
+                            ui.classList.remove("shake"); void ui.offsetWidth; ui.classList.add("shake");
+                            if (state.health <= 0) gameOver();
+                        }
+                    }
+
+                    ctx.lineCap="round";
+                    for(let i=state.lasers.length-1; i>=0; i--){
+                        let l=state.lasers[i]; l.life-=0.08;
+                        ctx.shadowBlur=20; ctx.shadowColor="#0f0";
+                        ctx.strokeStyle=`rgba(150,255,150,${l.life})`; ctx.lineWidth=6;
+                        ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2); ctx.stroke();
+                        ctx.shadowBlur=0;
+                        if(l.life<=0) state.lasers.splice(i,1);
+                    }
+                    for(let i=state.particles.length-1; i>=0; i--){
+                        let p=state.particles[i]; p.x+=p.vx; p.y+=p.vy; p.life-=0.03;
+                        ctx.fillStyle=p.color; ctx.globalAlpha=p.life;
+                        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+                        if(p.life<=0) state.particles.splice(i,1);
+                    }
+                    ctx.globalAlpha=1.0;
+                    requestAnimationFrame(gameLoop);
+                }
+
+                resize(); initStars();
+            } catch(e) {
+                document.getElementById('error-console').style.display='block';
+                document.getElementById('error-console').innerHTML+=`ERR: ${e.message}`;
+            }
+        };
+    </script>
+</body>
+</html>
